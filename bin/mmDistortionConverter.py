@@ -1,14 +1,5 @@
-"""
-Asks for a file using Tkinter GUI, then converts the file and exits.
+"""Asks for a file using Tkinter GUI, then converts the file and exits."""
 
-Copyright David Cattermole, 2013
-
-Author: David Cattermole
-Email: cattermole91@gmail.com
-Version: 0.2
-
-How to use: ....
-"""
 # Copyright David Cattermole, 2013
 # Licensed under the GNU General Public License, 
 # see "COPYING.txt" for more details.

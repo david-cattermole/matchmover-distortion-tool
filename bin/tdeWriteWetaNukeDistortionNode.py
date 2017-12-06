@@ -89,18 +89,16 @@ def main(cam, filePath, offset=None):
         elif cam.distortion.static == True: # case C
 
             # write distortion parameter
-            f.write(' '+getNukeParameterName(distPara)+' %.7f \n')
             distValue = cam.distortion.getValue(0)
             assert distValue != None
-            f.write(' %.7f \n'%distValue)
+            f.write(' %s %.7f \n' % (getNukeParameterName(distPara), distValue))
 
             # Write static default parameters
             for para in defParas:
-                f.write(' '+getNukeParameterName(para)+' %.7f \n')
                 d = 0.0
                 if para == 'Anamorphic Squeeze':
                     d = 1.0
-                f.write(' %.7f \n'%d)
+                f.write(' %s %.7f \n' % (getNukeParameterName(para), d))
 
         nodeName = 'tde4_ldp_%s_%s'%(str(cam.name), str(cam.index))
         replaceChar = '_'

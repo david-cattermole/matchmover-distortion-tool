@@ -11,7 +11,7 @@ import sys
 
 
 projectName = 'MatchMover Distortion Tool'
-projectVersion = 'v0.2'
+projectVersion = 'v0.2.1'
 projectAuthor = 'David Cattermole'
 projectEmail = 'cattermole91@gmail.com'
 projectTitle = projectName+' - '+projectVersion
