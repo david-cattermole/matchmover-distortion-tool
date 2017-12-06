@@ -9,14 +9,25 @@ import os.path as p
 import math
 
 import commonDataObjects as cdo
-import mmFileReader
+import mmFileReader as mfr
 import converter
 import mmWriteDistoImaBatchScript
 import mmDistortionConverter as mdc
+import test
 
 def main(filePath):
-    projData = mmFileReader.readRZML(filePath)
-    cams = projData.cameras
-    for cam in projData.cameras:
-        mmWriteDistoImaBatchScript.main(cam, filePath)
+    outDirs = test.outDirTests()
+    times = test.timeStringTests()
+    for time, outDir in zip(times, outDirs):
+        readOptions = mfr.Options()
+        readOptions.filePath = filePath
+        readOptions.time = time
+        projData = mfr.readRZML(readOptions)
+        cams = projData.cameras
+        for cam in projData.cameras:
+            distoOptions = mmWriteDistoImaBatchScript.Options()
+            distoOptions.filePath = filePath
+            distoOptions.time = time
+            distoOptions.outDir = outDir
+            mmWriteDistoImaBatchScript.main(cam, distoOptions)
     return True

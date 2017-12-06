@@ -14,7 +14,7 @@ import glob
 import platform
 
 projectName = 'MatchMover Distortion Tool'
-projectVersion = 'v0.3.1'
+projectVersion = 'v0.3.2'
 projectAuthor = 'David Cattermole'
 projectEmail = 'cattermole91@gmail.com'
 projectTitle = projectName+' - '+projectVersion
@@ -73,12 +73,14 @@ class ExportFileDescription(object):
 exportDesc = ExportFileDescription()
 
 
-def createOutFileName(inFile, cameraName,
-                      suffix, outExt):
+def createOutFileName(inFile,
+                      cameraName, suffix,
+                      outExt, outDir):
     assert isinstance(inFile, str) or isinstance(inFile, unicode)
     assert isinstance(cameraName, str)
     assert isinstance(suffix, str)
     assert isinstance(outExt, str)
+    assert isinstance(outDir, str)
 
     inFile = p.abspath(str(inFile))
 
@@ -88,8 +90,17 @@ def createOutFileName(inFile, cameraName,
         cameraName = cameraName.replace(char, replaceChar)
 
     inSplit = p.split(inFile)
-    outDir = inSplit[0]
     outFileName = inSplit[1]
+    
+    # Get Output directory.
+    if outDir == '<same>' or outDir == 'same':
+        outDir = inSplit[0]
+    else:
+        outDir = p.abspath(outDir)
+        if not p.isdir(outDir):
+            msg = "Warning: Custom output directory is not valid, '%s'."
+            print(msg % outDir)
+            outDir = inSplit[0]
     
     extSplit = p.splitext(outFileName)
     outFileName = extSplit[0]
@@ -101,6 +112,70 @@ def createOutFileName(inFile, cameraName,
     outFileName = outFileName+'_'+cameraName+'_'+suffix+outExt
     outFilePath = p.join(outDir, outFileName)
     return outFilePath
+
+
+def vaildInputFile(path):
+    extOk = False
+    supportedExts = ['.rzml']
+    for ext in supportedExts:
+        if path.endswith(ext):
+            extOk = True
+    return extOk
+
+
+def parseTimeString(timeString):
+    """Converts a time string into a list of numbers.
+
+    An example of the timeString would be '1-36' or '2,34,24'.
+    
+    Returns a list of integer numbers, representing time. """
+    if (timeString == '<all>' or
+        timeString == 'all' or
+        timeString == 'full' or
+        timeString == '<full>' or
+        timeString == '' or
+        timeString == None):
+        return None
+    timeList = list()
+    segs = timeString.split(',')
+    for seg in segs:
+        hasRangeChar = seg.find('-') != -1
+        rangeCharLen = seg.count('-')
+        if hasRangeChar and rangeCharLen == 1 and seg.startswith('-'):
+            # Negative number
+            msg = ("Warning: We were given a negative number in the "
+                   "time string: %s, all frames will be exported.")
+            print(msg%repr(timeString))
+            return None
+        elif hasRangeChar and rangeCharLen == 1:
+            # Range of Numbers
+            rangeSplit = seg.split('-')
+            rangeStart = int(rangeSplit[0])
+            rangeEnd = int(rangeSplit[1])+1
+            rangeList = list(range(rangeStart, rangeEnd))
+            for rangeValue in rangeList:
+                timeList.append(rangeValue)
+        elif hasRangeChar and rangeCharLen != 1:
+            msg = "time string cannot be parsed, it has too many range characters ('-'): %s"
+            raise ValueError, msg%repr(timeString)
+        else:
+            # A Single Number
+            timeValue = int(seg)
+            timeList.append(timeValue)
+    return timeList
+
+
+def isFrameInTimeList(frame, timeList):
+    """Returns True if the frame given is inside the time list, False otherwise.
+
+    Also handles special cases, if timeList is None."""
+    if timeList == None:
+        return True
+    if len(timeList) == 0:
+        return False
+    if frame in timeList:
+        return True
+    return False
 
 
 def getAllImageSequence(cameraImagePath):
@@ -128,6 +203,16 @@ def getAllImageSequence(cameraImagePath):
 
     images.sort()
     return images
+
+
+def getImageSequenceStartFrame(cameraImagePath):
+    images = getAllImageSequence(cameraImagePath)
+    frameNum = int()
+    if len(images) > 0:
+        frameNum = getImagePathFrameNumber(cameraImagePath, images[0])
+    if frameNum > 0:
+        frameNum = frameNum-1
+    return frameNum
 
 
 def splitImageSequencePath(cameraImagePath):

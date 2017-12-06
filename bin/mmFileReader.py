@@ -20,6 +20,12 @@ import commonDataObjects as cdo
 import xml.dom.minidom as xdm
 
 
+class Options(object):
+    def __init__(self):
+        self.filePath = None
+        self.time = None
+
+
 currentPlatform = str(platform.system()).lower()
 def getKey(attrs, key, dataType, default=None):
     """Get the key from the attrs, with the dataType wanted."""
@@ -61,7 +67,7 @@ def getAttrs(node):
     return attrs
 
 
-def getGlobalFrameRange(dom):
+def getGlobalFrameRange(dom, options):
     """Return the global time range of the file as a tuple (start, end, fps)."""
     trng = dom.getElementsByTagName("TRNG")
     for node in trng:
@@ -87,7 +93,7 @@ def getGlobalFrameRange(dom):
     return (startFrame, endFrame, fps)
 
 
-def getCameras(dom):
+def getCameras(dom, options):
     cams = list()
     cinfs = dom.getElementsByTagName("CINF")
     for node in cinfs:
@@ -127,7 +133,8 @@ def getCameras(dom):
     return cams
 
 
-def getShots(dom, cams):
+def getShots(dom, cams, options):
+    timeList = cdo.parseTimeString(options.time)
     seqDataList = list()
     shotTag = dom.getElementsByTagName("SHOT")
     # constant used in the loop.
@@ -189,6 +196,9 @@ def getShots(dom, cams):
                     frame = int(0)
                 assert frame >= 0
 
+                # ensure the frame is valid.
+                # if cdo.isFrameInTimeList(frame, timeList):
+                
                 fovx = getKey(frameAttrs, 'fovx', 'float')
                 pixelRatio = getKey(frameAttrs, 'pr', 'float', default=float(1))
                 dst = getKey(frameAttrs, 'rd', 'float', default=0.0)
@@ -215,19 +225,21 @@ def getShots(dom, cams):
     return seqDataList
 
 
-def readRZML(fileName):
-    dom = xdm.parse(fileName)
+def readRZML(options):
+    assert options.filePath != None
+    filePath = options.filePath
+    dom = xdm.parse(filePath)
 
     rzml = dom.getElementsByTagName("RZML")
 
-    globalFrameRange = getGlobalFrameRange(dom)
-    cameras = getCameras(dom)
-    shots = getShots(dom, cameras)
+    globalFrameRange = getGlobalFrameRange(dom, options)
+    cameras = getCameras(dom, options)
+    shots = getShots(dom, cameras, options)
 
     project = cdo.MMSceneData()
-    project.name = p.split(fileName)[1]
+    project.name = p.split(filePath)[1]
     project.index = int()
-    project.path = fileName
+    project.path = filePath
     project.cameras = cameras
     project.sequences = shots
     project.frameRange = globalFrameRange

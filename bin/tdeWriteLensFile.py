@@ -17,7 +17,14 @@ defParas = ['Anamorphic Squeeze',
             'Quartic Distortion']
 
 
-def writeCurve(f, keyframes):
+class Options(object):
+    def __init__(self):
+        self.filePath = None
+        self.time = None
+        self.outDir = None
+
+
+def writeCurve(f, keyframes, timeList):
     if isinstance(keyframes, cdo.KeyframeData):
         if keyframes.static == False:
             keysNum = keyframes.length
@@ -25,9 +32,10 @@ def writeCurve(f, keyframes):
             timeValues = keyframes.getTimeValues()
             for i in range(keysNum):
                 time = timeValues[i]
-                value = keyframes.getValue(time)
-                f.write("%.15f %.15f "%(time,value))
-                f.write("0.0 0.0 0.0 0.0 SMOOTH\n")
+                if cdo.isFrameInTimeList(time, timeList):
+                    value = keyframes.getValue(time)
+                    f.write("%.15f %.15f "%(time,value))
+                    f.write("0.0 0.0 0.0 0.0 SMOOTH\n")
         else:
             f.write("0\n")
     else:
@@ -36,9 +44,13 @@ def writeCurve(f, keyframes):
     return True
 
 
-def main(cam, filePath):
-    outFilePath = cdo.createOutFileName(filePath, cam.name,
-                                        cdo.exportDesc.tdeLens, 'txt')
+def main(cam, options):
+    filePath = options.filePath
+    assert filePath != None
+    outDir = options.outDir
+    timeList = cdo.parseTimeString(options.time)
+
+    outFilePath = cdo.createOutFileName(filePath, cam.name, cdo.exportDesc.tdeLens, 'txt', outDir)
     outFileName = p.split(outFilePath)[1]
     msg = "Writing 3DE Lens file to '%s'."
     print(msg % outFileName)
@@ -62,14 +74,11 @@ def main(cam, filePath):
         f.write("%.15f\n"%(cam.pixelAspectRatio))
 
         # write dynamic distortion
-        #
-        # NOTE: When the distortion is NOT 
-        # static the value written should be "1". However, we 
-        # must write a curve out for the focus distance.
+        # If the distortion is animated, we must write a curve out for the focus distance.
         if cam.distortion.static:
-            f.write("%d\n"%(0))
+            f.write("DISTORTION_STATIC\n")
         else:
-            f.write("%d\n"%(0))
+            f.write("DISTORTION_DYNAMIC_FOCUS_DISTANCE\n")
 
         # write out model
         f.write("%s\n"%lensModelName)
@@ -81,7 +90,7 @@ def main(cam, filePath):
             assert distValue != None
         f.write("%s\n"%(distPara))
         f.write("%.15f\n"%(distValue))
-        writeCurve(f, cam.distortion)
+        writeCurve(f, cam.distortion, timeList)
 
         # write out all other distortion default values
         for para in defParas:
@@ -90,7 +99,7 @@ def main(cam, filePath):
             if para == 'Anamorphic Squeeze':
                 d = 1.0
             f.write("%.15f\n"%(d))
-            writeCurve(f, None)
+            writeCurve(f, None, timeList)
 
         f.write("<end_of_file>\n")
         f.close()

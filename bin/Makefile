@@ -1,6 +1,6 @@
 #
 
-all: clean run
+all: clean tags run
 
 clean: 
 	@echo Cleaning...
@@ -10,13 +10,13 @@ clean:
 	-rm -f testFiles/*.bat
 	-rm -f coverage/*
 
-test: clean
+test: clean tags
 	@echo Testing...
 	-coverage -e
 	-coverage -x test.py
 	-coverage -b -d ./coverage
 
-run:
+run: tags
 	@echo Running...
 	-python2 mmDistortionConverter.py
 

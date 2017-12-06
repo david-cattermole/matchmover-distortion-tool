@@ -101,31 +101,28 @@ def getScriptFooter(action, opsys=None):
     return footer
 
 
-
-class distoImaScriptOptions(object):
-    """Options that can be passed to the DistoIma Batch Script exporter."""
+class Options(object):
+    """Options that can be passed to the Warp Batch Script exporter."""
     def __init__(self):
-        # other options are currently unsupported.
+        self.filePath = None
+        self.time = None
+        self.outDir = '<same>' # <same>, <current>, any path.
         self.useOverscan = 'none'
-        
-        # 'same'(as input),
-        # 'current'(working directory),
-        # 'custom'(use 'outputDir').
-        self.outputLocation = 'same' 
-        self.outputDir = '/tmp/'
 
         # appended to the file path output, before '(un)distort'.
-        self.fileSuffix = '_distoima'
-
-        # frame range (subset)
-        self.start = None
-        self.end = None
-
+        self.fileSuffix = '_warp4'
+        
         # output Image Extension, JPEG is default.
         # if None, use input image extension.
         self.outImageExt = 'jpg'
 
-def main(cam, filePath, options=None):
+
+def main(cam, options):
+    filePath = options.filePath
+    assert filePath != None
+    outDir = options.outDir
+    timeList = cdo.parseTimeString(options.time)
+    
     assert isinstance(cam, cdo.MMCameraData)
     seq = cdo.MMSequenceData()
     if len(cam.sequences) > 0:
@@ -145,10 +142,8 @@ def main(cam, filePath, options=None):
         return True
     seqPad = cdo.getImageSequencePadding(seq.imagePath)
     seqStart, seqEnd = cdo.splitImageSequencePath(seq.imagePath)
-
-    # Get default options, if none were given.
-    if options == None or isinstance(options, distoimaScriptOptions):
-        options = distoImaScriptOptions()
+    offset = cdo.getImageSequenceStartFrame(seq.imagePath)
+    # print 'offset:', repr(offset)
 
     # get script file syntax, changes based on Operating System.
     binPath = getDistoImaExec()
@@ -200,18 +195,7 @@ def main(cam, filePath, options=None):
         starterScriptFooter = getScriptFooter(action)
 
         # Get the output file path
-        outFilePath = cdo.createOutFileName(filePath, cam.name,
-                                            desc, scriptExt)
-        if options.outputLocation == 'current':
-            cwd = os.getcwd()
-            assert p.isdir(cwd) == True
-            outFilePath = p.join(cwd, p.basename(outFilePath))
-        elif options.outputLocation == 'custom':
-            if p.isdir(options.outputDir):
-                outFilePath = p.join(options.outputDir, p.basename(outFilePath))
-            else:
-                msg = "Warning: Custom output directory is not valid, '%s'."
-                print(msg % options.outputDir)
+        outFilePath = cdo.createOutFileName(filePath, cam.name, desc, scriptExt, outDir)
         outFileName = p.split(outFilePath)[1]
         msg = "Writing DistoIma Script file to '%s'."
         print(msg % outFileName)
@@ -265,44 +249,48 @@ def main(cam, filePath, options=None):
 
                     # Get the frame number from image path.
                     frameNum = cdo.getImagePathFrameNumber(imageSeq, imgPath)
+                    # print 'frameNum:', repr(frameNum)
 
-                    # Set Distortion Parameter.
-                    d = 0.0
-                    if isinstance(cam.distortion, cdo.KeyframeData):
-                        d = cam.distortion.getValue(frameNum)
-                        assert d != None
-                    cmd = cmd.replace('!DISTO!', str(d))
+                    # only output frames that are valid.
+                    if cdo.isFrameInTimeList(frameNum, timeList):
 
-                    # Set Focal Length
-                    fl = 0.0
-                    if isinstance(focalData, cdo.KeyframeData):
-                        fl = focalData.getValue(frameNum)
-                        assert fl != None
-                    cmd = cmd.replace('!FOCAL!', str(fl))
+                        # Set Distortion Parameter.
+                        d = 0.0
+                        if isinstance(cam.distortion, cdo.KeyframeData):
+                            d = cam.distortion.getValue(frameNum)
+                            assert d != None
+                        cmd = cmd.replace('!DISTO!', str(d))
 
-                    # Get image paths
-                    outImgPath = str()
-                    inImgPath = str()
-                    padStr = '#'*seqPad
-                    frameStr = str(frameNum).zfill(seqPad)
-                    if seqStart.endswith('.'):
-                        outImgPath = seqStart[:-1]+suffix+'.'
-                    elif seqStart.endswith('_'):
-                        outImgPath = seqStart[:-1]+suffix+'_'
-                    elif seqStart.endswith('-'):
-                        outImgPath = seqStart[:-1]+suffix+'-'
-                    else:
-                        outImgPath = seqStart+suffix
-                    # inImgPath = seqStart+padStr+seqEnd
-                    # outImgPath = outImgPath+padStr+'.'+options.outImageExt
-                    inImgPath = seqStart+frameStr+seqEnd
-                    outImgPath = outImgPath+frameStr+'.'+options.outImageExt
+                        # Set Focal Length
+                        fl = 0.0
+                        if isinstance(focalData, cdo.KeyframeData):
+                            fl = focalData.getValue(frameNum)
+                            assert fl != None
+                        cmd = cmd.replace('!FOCAL!', str(fl))
 
-                    # Replace in/out paths.
-                    cmd = cmd.replace('!FRAME!', str(frameNum))
-                    cmd = cmd.replace('!IN!', cdo.convertUnixToWinePath(inImgPath))
-                    cmd = cmd.replace('!OUT!', cdo.convertUnixToWinePath(outImgPath))
-                    f.write(cmd+os.linesep+os.linesep)
+                        # Get image paths
+                        outImgPath = str()
+                        inImgPath = str()
+                        padStr = '#'*seqPad
+                        frameStr = str(frameNum).zfill(seqPad)
+                        if seqStart.endswith('.'):
+                            outImgPath = seqStart[:-1]+suffix+'.'
+                        elif seqStart.endswith('_'):
+                            outImgPath = seqStart[:-1]+suffix+'_'
+                        elif seqStart.endswith('-'):
+                            outImgPath = seqStart[:-1]+suffix+'-'
+                        else:
+                            outImgPath = seqStart+suffix
+                        # inImgPath = seqStart+padStr+seqEnd
+                        # outImgPath = outImgPath+padStr+'.'+options.outImageExt
+                        inImgPath = seqStart+frameStr+seqEnd
+                        outImgPath = outImgPath+frameStr+'.'+options.outImageExt
+
+                        # Replace in/out paths.
+                        cmd = cmd.replace('!FRAME!', str(frameNum))
+                        cmd = cmd.replace('!IN!', cdo.convertUnixToWinePath(inImgPath))
+                        cmd = cmd.replace('!OUT!', cdo.convertUnixToWinePath(outImgPath))
+                        f.write(cmd+os.linesep+os.linesep)
 
                 f.write(scriptFooter)
                 f.close()

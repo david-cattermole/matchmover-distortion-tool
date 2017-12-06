@@ -17,7 +17,9 @@ import mmDistortionConverter
 
 
 def main(filePath):
-    proj = mfr.readRZML(filePath)
+    readOptions = mfr.Options()
+    readOptions.filePath = filePath
+    proj = mfr.readRZML(readOptions)
     for cam in proj.cameras:
         mmCam = converter.convertCamera(cam, cdo.softwareType.mm)
         tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)

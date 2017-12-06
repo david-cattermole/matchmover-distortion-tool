@@ -99,27 +99,28 @@ def getScriptFooter(action):
     return footer
 
 
-class warpScriptOptions(object):
+class Options(object):
     """Options that can be passed to the Warp Batch Script exporter."""
     def __init__(self):
-        # other options are currently unsupported.
+        self.filePath = None
+        self.time = None
+        # self.offset = None
+        self.outDir = '<same>' # <same>, <current>, any path.
         self.useOverscan = 'none'
-        
-        # 'same'(as input),
-        # 'current'(working directory),
-        # 'custom'(use 'outputDir').
-        self.outputLocation = 'same' 
-        self.outputDir = '/tmp/'
 
         # appended to the file path output, before '(un)distort'.
         self.fileSuffix = '_warp4'
-
-        # frame range (sub-set)
-        self.start = None
-        self.end = None
         
 
-def main(cam, filePath, options=None):
+def main(cam, options):
+    filePath = options.filePath
+    # offset = options.offset
+    outDir = options.outDir
+    # if offset == None or not isinstance(offset, int):
+    #     offset = 0
+    assert filePath != None
+    timeList = cdo.parseTimeString(options.time)
+    
     assert isinstance(cam, cdo.TDECameraData)
     seq = cdo.TDESequenceData()
     if len(cam.sequences) > 0:
@@ -138,10 +139,6 @@ def main(cam, filePath, options=None):
         return True
     seqPad = cdo.getImageSequencePadding(seq.imagePath)
     seqStart, seqEnd = cdo.splitImageSequencePath(seq.imagePath)
-
-    # Get default options, if none were given.
-    if options == None or isinstance(options, warpScriptOptions):
-        options = warpScriptOptions()
 
     # get script file syntax, changes based on Operating System.
     binPath = getWarpExec()
@@ -180,8 +177,8 @@ def main(cam, filePath, options=None):
                'apply_distortion']
     descriptions = [cdo.exportDesc.tdeUndistortScript,
                     cdo.exportDesc.tdeDistortScript]
-    suffixes = ['distort',
-                'undistort']
+    suffixes = ['undistort',
+                'distort']
     for i in range(len(actions)):
         action = actions[i]
         desc = descriptions[i]
@@ -190,18 +187,9 @@ def main(cam, filePath, options=None):
         scriptFooter = getScriptFooter(action)
 
         # Get the output file path
-        outFilePath = cdo.createOutFileName(filePath, cam.name,
-                                            desc, scriptExt)
-        if options.outputLocation == 'current':
-            cwd = os.getcwd()
-            assert p.isdir(cwd) == True
-            outFilePath = p.join(cwd, p.basename(outFilePath))
-        elif options.outputLocation == 'custom':
-            if p.isdir(options.outputDir):
-                outFilePath = p.join(options.outputDir, p.basename(outFilePath))
-            else:
-                msg = "Warning: Custom output directory is not valid, '%s'."
-                print(msg % options.outputDir)
+        outFilePath = cdo.createOutFileName(filePath,
+                                            cam.name, desc,
+                                            scriptExt, outDir)
         outFileName = p.split(outFilePath)[1]
         msg = "Writing Warp Script file to '%s'."
         print(msg % outFileName)
@@ -250,39 +238,42 @@ def main(cam, filePath, options=None):
                     # Get the frame number from image path.
                     frameNum = cdo.getImagePathFrameNumber(seq.imagePath, imgPath)
 
-                    # Set Distortion Parameter.
-                    d = 0.0
-                    if isinstance(cam.distortion, cdo.KeyframeData):
-                        d = cam.distortion.getValue(frameNum)
-                        assert d != None
-                    paraStr = '!%s!' % distPara.upper()
-                    cmd = cmd.replace(paraStr, str(d))
+                    # only output frames that are valid.
+                    if cdo.isFrameInTimeList(frameNum, timeList):
 
-                    # Set Default Parameters.
-                    for para in defParas:
+                        # Set Distortion Parameter.
                         d = 0.0
-                        if para == 'Anamorphic Squeeze':
-                            d = 1.0
-                        paraStr = '!%s!' % para.upper()
+                        if isinstance(cam.distortion, cdo.KeyframeData):
+                            d = cam.distortion.getValue(frameNum)
+                            assert d != None
+                        paraStr = '!%s!' % distPara.upper()
                         cmd = cmd.replace(paraStr, str(d))
 
-                    # Get image path
-                    outImgPath = str()
-                    frameStr = str(frameNum).zfill(seqPad)
-                    if seqStart.endswith('.'):
-                        outImgPath = seqStart[:-1]+suffix+'.'
-                    elif seqStart.endswith('_'):
-                        outImgPath = seqStart[:-1]+suffix+'_'
-                    elif seqStart.endswith('-'):
-                        outImgPath = seqStart[:-1]+suffix+'-'
-                    else:
-                        outImgPath = seqStart+suffix
-                    outImgPath = outImgPath+frameStr+seqEnd
+                        # Set Default Parameters.
+                        for para in defParas:
+                            d = 0.0
+                            if para == 'Anamorphic Squeeze':
+                                d = 1.0
+                            paraStr = '!%s!' % para.upper()
+                            cmd = cmd.replace(paraStr, str(d))
 
-                    # Replace in/out paths.
-                    cmd = cmd.replace('!IN!', imgPath)
-                    cmd = cmd.replace('!OUT!', outImgPath)
-                    f.write(cmd+os.linesep+os.linesep)
+                        # Get image path
+                        outImgPath = str()
+                        frameStr = str(frameNum).zfill(seqPad)
+                        if seqStart.endswith('.'):
+                            outImgPath = seqStart[:-1]+suffix+'.'
+                        elif seqStart.endswith('_'):
+                            outImgPath = seqStart[:-1]+suffix+'_'
+                        elif seqStart.endswith('-'):
+                            outImgPath = seqStart[:-1]+suffix+'-'
+                        else:
+                            outImgPath = seqStart+suffix
+                        outImgPath = outImgPath+frameStr+seqEnd
+
+                        # Replace in/out paths.
+                        cmd = cmd.replace('!IN!', imgPath)
+                        cmd = cmd.replace('!OUT!', outImgPath)
+                        f.write(cmd+os.linesep+os.linesep)
 
                 f.write(scriptFooter)
                 f.close()

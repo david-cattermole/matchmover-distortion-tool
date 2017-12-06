@@ -32,12 +32,21 @@ class ConverterOptions(object):
     """Options that can be passed to MMDistortionConverter.exportData()."""
     def __init__(self):
         self.inputFile = None
-        # self.outputDir = None
+        self.inputTime = None
+
+        self.outputDir = None
+        
         self.exportNukeDistNode = None
         self.exportRawText = None
         self.exportTdeLens = None
         self.exportWarpBatch = None
         self.exportDistoBatch = None
+        
+        self.nukeDistNodeOptions = None
+        self.rawTextOptions = None
+        self.tdeLensOptions = None
+        self.warpBatchOptions = None
+        self.distoBatchOptions = None
 
 
 class MMDistortionConverter(Frame):
@@ -60,6 +69,8 @@ class MMDistortionConverter(Frame):
         if path != None:
             options = ConverterOptions()
             options.inputFile = str(path)
+            options.inputTime = '<all>'
+            options.outputDir = '<same>'
             if export == None:
                 options.exportNukeDistNode = True
                 options.exportRawText = True
@@ -96,6 +107,10 @@ class MMDistortionConverter(Frame):
 
         # Input/Output
         self.inputFile = StringVar()
+        self.inputTime = StringVar()
+        self.outputDir = StringVar()
+        self.outputDir.set('<same>')
+        self.inputTime.set('<all>')
         inOutFrame = LabelFrame(mainFrame, text='File/Directories...', relief=GROOVE, borderwidth=2)
         inOutFrame.pack(fill=BOTH,expand=1)
 
@@ -109,16 +124,23 @@ class MMDistortionConverter(Frame):
         inFileBtn.pack(side=RIGHT, padx=5, pady=2)
         self.inFileEntry.pack(side=RIGHT, fill=X, expand=1, padx=5, pady=2)
 
-        # # Output Directory
-        # self.outputDir = StringVar()
-        # outDirFrame = Frame(inOutFrame)
-        # outDirLabel = Label(outDirFrame, text='Output Directory:')
-        # outDirBtn = Button(outDirFrame, text='...', command=self.getDirectoryPath)
-        # self.outDirEntry = Entry(outDirFrame, textvariable=self.outputDir)
-        # outDirFrame.pack(fill=BOTH,expand=1)
-        # outDirLabel.pack(side=LEFT, padx=5, pady=2)
-        # outDirBtn.pack(side=RIGHT, padx=5, pady=2)
-        # self.outDirEntry.pack(side=RIGHT, fill=X, expand=1, padx=5, pady=2)
+        # Input Time
+        inTimeFrame = Frame(inOutFrame)
+        inTimeLabel = Label(inTimeFrame, text='Input Time:')
+        self.inTimeEntry = Entry(inTimeFrame, textvariable=self.inputTime)
+        inTimeFrame.pack(fill=BOTH,expand=1)
+        inTimeLabel.pack(side=LEFT, padx=5, pady=2)
+        self.inTimeEntry.pack(side=RIGHT, fill=X, expand=1, padx=5, pady=2)
+
+        # Output Directory
+        outDirFrame = Frame(inOutFrame)
+        outDirLabel = Label(outDirFrame, text='Output Directory:')
+        outDirBtn = Button(outDirFrame, text='...', command=self.getDirectoryPath)
+        self.outDirEntry = Entry(outDirFrame, textvariable=self.outputDir)
+        outDirFrame.pack(fill=BOTH,expand=1)
+        outDirLabel.pack(side=LEFT, padx=5, pady=2)
+        outDirBtn.pack(side=RIGHT, padx=5, pady=2)
+        self.outDirEntry.pack(side=RIGHT, fill=X, expand=1, padx=5, pady=2)
         
         # Output Formats
         outFormatsFrame = LabelFrame(mainFrame, text='Export File Formats...', relief=GROOVE, borderwidth=2)
@@ -194,7 +216,8 @@ class MMDistortionConverter(Frame):
     def exportDataFromGui(self):
         options = ConverterOptions()
         options.inputFile = self.inputFile.get()
-        # options.outputDir = self.outputDir.get()
+        options.inputTime = self.inputTime.get()
+        options.outputDir = self.outputDir.get()
         options.exportNukeDistNode = self.exportNukeDistNode.get()
         options.exportRawText = self.exportRawText.get()
         options.exportTdeLens = self.exportTdeLens.get()
@@ -211,14 +234,15 @@ class MMDistortionConverter(Frame):
 
         Returns True or False."""
         assert options.inputFile != None
-        # assert options.outputDir != None
+        assert options.inputTime != None
+        assert options.outputDir != None
         assert options.exportNukeDistNode != None
         assert options.exportRawText != None
         assert options.exportTdeLens != None
         assert options.exportWarpBatch != None
         assert options.exportDistoBatch != None
         
-        if not options.inputFile.endswith('.rzml'):
+        if not cdo.vaildInputFile(options.inputFile):
             msg = 'Incorrect file extension, must end with ".rzml", file path: %s.'
             print msg % repr(options.inputFile)
             return
@@ -226,22 +250,47 @@ class MMDistortionConverter(Frame):
         # read the file, get camera data.
         fileName = p.split(options.inputFile)[1]
         print("Reading Matchmover File: '%s'" % fileName)
-        projData = mmFileReader.readRZML(options.inputFile)
+        readOptions = mmFileReader.Options()
+        readOptions.filePath = options.inputFile
+        readOptions.time = options.inputTime
+        projData = mmFileReader.readRZML(readOptions)
 
         cams = projData.cameras
         for cam in projData.cameras:
             print("Converting Camera: '%s'" % cam.name)
             tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)
             if options.exportNukeDistNode:
-                tdeWriteWetaNukeDistortionNode.main(tdeCam, options.inputFile)
+                nukeOptions = tdeWriteWetaNukeDistortionNode.Options()
+                nukeOptions.filePath = options.inputFile
+                nukeOptions.time = options.inputTime
+                nukeOptions.outDir = options.outputDir
+                tdeWriteWetaNukeDistortionNode.main(tdeCam, nukeOptions)
             if options.exportRawText:
-                tdeWriteRawText.main(tdeCam, options.inputFile)
+                rawOptions = tdeWriteRawText.Options()
+                rawOptions.filePath = options.inputFile
+                rawOptions.time = options.inputTime
+                rawOptions.outDir = options.outputDir
+                tdeWriteRawText.main(tdeCam, rawOptions)
             if options.exportTdeLens:
-                tdeWriteLensFile.main(tdeCam, options.inputFile)
+                lensOptions = tdeWriteLensFile.Options()
+                lensOptions.filePath = options.inputFile
+                lensOptions.time = options.inputTime
+                lensOptions.outDir = options.outputDir
+                tdeWriteLensFile.main(tdeCam, lensOptions)
             if options.exportWarpBatch:
-                tdeWriteWarpBatchScript.main(tdeCam, options.inputFile)
+                warpOptions = tdeWriteWarpBatchScript.Options()
+                warpOptions.filePath = options.inputFile
+                warpOptions.time = options.inputTime
+                warpOptions.outDir = options.outputDir
+                # warpOptions.useOverscan = 'none'
+                # warpOptions.fileSuffix = '_warp4'
+                tdeWriteWarpBatchScript.main(tdeCam, warpOptions)
             if options.exportDistoBatch:
-                mmWriteDistoImaBatchScript.main(cam, options.inputFile)
+                distoOptions = mmWriteDistoImaBatchScript.Options()
+                distoOptions.filePath = options.inputFile
+                distoOptions.time = options.inputTime
+                distoOptions.outDir = options.outputDir
+                mmWriteDistoImaBatchScript.main(cam, distoOptions)
         
         print('Distortion Converter Finished!')
         return
@@ -264,7 +313,7 @@ class MMDistortionConverter(Frame):
         result = tkFileDialog.askopenfilename(filetypes=[('RZML', '*.rzml')],
                                               multiple=False, 
                                               title=cdo.projectTitle)
-        if result == '':
+        if len(result) == 0:
             filePath = None
         else:
             filePath = result
@@ -280,7 +329,7 @@ class MMDistortionConverter(Frame):
         result = tkFileDialog.askdirectory(initialdir=os.getcwd,
                                            mustexist=False, 
                                            title=cdo.projectTitle)
-        if result == '':
+        if len(result) == 0:
             dirPath = None
         else:
             dirPath = result
@@ -289,6 +338,12 @@ class MMDistortionConverter(Frame):
 
 
 if __name__ == '__main__':
+    root = Tk()
+    gui = MMDistortionConverter(master=root)
+    gui.master.title(cdo.projectTitle)
+    gui.mainloop()
+
+def runWindow():
     root = Tk()
     gui = MMDistortionConverter(master=root)
     gui.master.title(cdo.projectTitle)

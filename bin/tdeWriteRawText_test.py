@@ -9,17 +9,28 @@ import os.path as p
 import math
 
 import commonDataObjects as cdo
-import mmFileReader
+import mmFileReader as mfr
 import converter
 import tdeWriteLensFile
 import tdeWriteRawText
 import tdeWriteWetaNukeDistortionNode
 import mmDistortionConverter as mdc
+import test
 
 def main(filePath):
-    projData = mmFileReader.readRZML(filePath)
-    cams = projData.cameras
-    for cam in projData.cameras:
-        tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)
-        tdeWriteRawText.main(tdeCam, filePath)
+    outDirs = test.outDirTests()
+    times = test.timeStringTests()
+    for time, outDir in zip(times, outDirs):
+        readOptions = mfr.Options()
+        readOptions.filePath = filePath
+        readOptions.time = time
+        projData = mfr.readRZML(readOptions)
+        cams = projData.cameras
+        for cam in projData.cameras:
+            tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)
+            rawOptions = tdeWriteRawText.Options()
+            rawOptions.filePath = filePath
+            rawOptions.time = time
+            rawOptions.outDir = outDir
+            tdeWriteRawText.main(tdeCam, rawOptions)
     return True

@@ -7,6 +7,9 @@
 import os
 import os.path as p
 import math
+import tempfile
+import random
+import shutil as sh
 
 import commonDataObjects as cdo
 import mmFileReader
@@ -25,6 +28,27 @@ import tdeWriteWetaNukeDistortionNode_test
 import tdeWriteWarpBatchScript_test
 import mmWriteDistoImaBatchScript_test
 import mmDistortionConverter_test
+
+
+def timeStringTests():
+    timeStringList = ['<all>', '1,2,3,44,25-454', '26265']
+    random.shuffle(timeStringList)
+    return timeStringList
+
+
+def outDirTests():
+    tmpDir = tempfile.mkdtemp(prefix='mmDistortionTool_', suffix='_tmp')
+    outDirList = ['<same>', '-NON_EXISTENT_PATH-', tmpDir]
+    random.shuffle(outDirList)
+    return outDirList
+
+
+def removeAllTempDirectories():
+    tempDir = tempfile.gettempdir()
+    for name in os.listdir(tempDir):
+        if name.startswith('mmDistortionTool_') and name.endswith('_tmp'):
+            sh.rmtree(os.path.join(tempDir, name))
+    return True
 
 
 def getAllRZMLTestFiles():
@@ -120,6 +144,11 @@ def main():
             assert frameNum >= 0
             assert frameNum < 3
 
+    # Now test the GUI,
+    # the user is free to trigger anything they want to.
+    mmDistortionConverter.runWindow()
+
+    removeAllTempDirectories()
     return True
 
 

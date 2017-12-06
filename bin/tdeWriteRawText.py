@@ -17,7 +17,14 @@ defParas = ['Anamorphic Squeeze',
             'Quartic Distortion']
 
 
-def writeCurve(f, keyframes):
+class Options(object):
+    def __init__(self):
+        self.filePath = None
+        self.time = None
+        self.outDir = None
+
+
+def writeCurve(f, keyframes, timeList):
     assert keyframes != None
     if isinstance(keyframes, cdo.KeyframeData):
         if not keyframes.static:
@@ -28,14 +35,20 @@ def writeCurve(f, keyframes):
             timeValues = keyframes.getTimeValues()
             for i in range(keysNum):
                 time = timeValues[i]
-                value = keyframes.getValue(time)
-                f.write("%.15f %.15f\n"%(time,value))
+                if cdo.isFrameInTimeList(time, timeList):
+                    value = keyframes.getValue(time)
+                    f.write("%.15f %.15f\n"%(time,value))
     return True
 
 
-def main(cam, filePath):
+def main(cam, options):
+    filePath = options.filePath
+    assert filePath != None
+    outDir = options.outDir
+    timeList = cdo.parseTimeString(options.time)
+    
     outFilePath = cdo.createOutFileName(filePath, cam.name,
-                                        cdo.exportDesc.tdeRawText, 'txt')
+                                        cdo.exportDesc.tdeRawText, 'txt', outDir)
     
     outFileName = p.split(outFilePath)[1]
     msg = "Writing 3DE Raw Text file to '%s'."
@@ -72,7 +85,7 @@ def main(cam, filePath):
             assert distValue != None
         f.write("%s\n"%(distPara))        
         f.write("%.15f\n"%(distValue))
-        writeCurve(f, cam.distortion)
+        writeCurve(f, cam.distortion, timeList)
         f.write("\n")
 
         # write out all other distortion default values
@@ -83,7 +96,7 @@ def main(cam, filePath):
                 d = 1.0
             f.write("%.15f\n"%(d))
             keys = cdo.KeyframeData(static=True, initialValue=d)
-            writeCurve(f, keys)
+            writeCurve(f, keys, timeList)
             f.write("\n")
 
         f.close()
