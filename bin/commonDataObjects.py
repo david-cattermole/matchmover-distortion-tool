@@ -14,7 +14,7 @@ import glob
 import platform
 
 projectName = 'MatchMover Distortion Tool'
-projectVersion = 'v0.3.0'
+projectVersion = 'v0.3.1'
 projectAuthor = 'David Cattermole'
 projectEmail = 'cattermole91@gmail.com'
 projectTitle = projectName+' - '+projectVersion

@@ -62,8 +62,12 @@ def main(cam, filePath):
         f.write("%.15f\n"%(cam.pixelAspectRatio))
 
         # write dynamic distortion
+        #
+        # NOTE: When the distortion is NOT 
+        # static the value written should be "1". However, we 
+        # must write a curve out for the focus distance.
         if cam.distortion.static:
-            f.write("%d\n"%(1))
+            f.write("%d\n"%(0))
         else:
             f.write("%d\n"%(0))
 
