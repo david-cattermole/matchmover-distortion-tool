@@ -1,0 +1,469 @@
+//
+// focal - The focal length parameter, as defined in Matchmover.
+// distortion - The distortion parameter, as defined in Matchmover.
+// 
+// alpha = The Pixel Aspect Ratio parameter, as defined in Matchmover.
+//
+// width = The width of the image.
+// height = The height of the image.
+// x = The current X index of the pixel being calculated.
+// y = The current Y index of the pixel being calculated.
+
+
+Distortion Expression X:
+float k=distortion/(focal*focal); 
+float alpha=1.5; 
+float ppx=width/2; 
+float ppy=height/2; 
+float xc=x-ppx; 
+float yc=y-ppy; 
+float rr=xc*xc+(yc*yc)/(alpha*alpha); 
+float newr=1+k*rr;
+xc*newr+ppx; 
+
+Distortion Expression Y:
+float k=distortion/(focal*focal); 
+float alpha=1.5; 
+float ppx=width/2; 
+float ppy=height/2; 
+float xc=x-ppx; 
+float yc=y-ppy; 
+float rr=xc*xc+(yc*yc)/(alpha*alpha); 
+float newr=1+k*rr; 
+yc*newr+ppy;
+
+
+Undistortion Expression X:
+if (((x==0) && (y==0)) || (distortion==0)) return x; 
+float k=distortion/(focal*focal); 
+float alpha=1.5; 
+float ppx=width/2; 
+float ppy=height/2; 
+float xc=x-ppx; 
+float yc=y-ppy; 
+float Rd; 
+float Ru=sqrt((xc*xc)+(yc*yc)/(alpha*alpha)); 
+float c=1/k;
+float d=(-c)*Ru; 
+float Q=c/3; 
+float R=(-d)/2; 
+float D=(Q*Q*Q)+(R*R); 
+if (D>=0) 
+  { 
+    D=sqrt(D); 
+    float S; 
+    if ((R+D)<0) 
+      { 
+	S=-cbrt(-R-D);
+      } 
+    else
+      { 
+	S=cbrt(R+D); 
+      } 
+    float T; 
+    if (R<D) 
+      { 
+	T=-cbrt(D-R);
+      } 
+    else 
+      { 
+	T=cbrt(R-D);
+      } 
+    Rd=S+T; 
+  } 
+ else
+   { 
+     D=sqrt(-D); 
+     float S=cbrt(sqrt((R*R)+(D*D)));
+     float T=atan2(D,R)/3;
+     float sinT=sin(T);
+     float cosT=cos(T);
+     Rd=(-S*cosT)+(sqrt(3)*S*sinT);
+   };
+float lambda=Rd/Ru;
+xc*lambda+ppx;
+
+
+Undistortion Expression Y:
+if (((x==0) && (y==0)) || (distortion==0)) return y; 
+float k=distortion/(focal*focal); 
+float alpha=1.5; 
+float ppx=width/2; 
+float ppy=height/2; 
+float xc=x-ppx; 
+float yc=y-ppy; 
+float Rd; 
+float Ru=sqrt((xc*xc)+(yc*yc)/(alpha*alpha)); 
+float c=1/k; 
+float d=(-c)*Ru; 
+float Q=c/3; 
+float R=(-d)/2; 
+float D=(Q*Q*Q)+(R*R); 
+if (D>=0) 
+  { 
+    D=sqrt(D); 
+    float S; 
+    if ((R+D)<0) 
+      { 
+	S=-cbrt(-R-D);
+      } 
+    else 
+      { 
+	S=cbrt(R+D); 
+      } 
+    float T; 
+    if (R<D) 
+      { 
+	T=-cbrt(D-R);
+      } 
+    else 
+      { 
+	T=cbrt(R-D);
+      } 
+    Rd=S+T; 
+  } 
+ else 
+   { 
+     D=sqrt(-D);
+     float S=cbrt(sqrt((R*R)+(D*D))); 
+     float T=atan2(D,R)/3; 
+     float sinT=sin(T); 
+     float cosT=cos(T); 
+     Rd=(-S*cosT)+(sqrt(3)*S*sinT); 
+   }; 
+float lambda=Rd/Ru; 
+yc*lambda+ppy;
+
+
+Convert to 3DE:
+Distortion Expression X:
+float k=distortion/(focal*focal); 
+float alpha=1.5; 
+float ppx=width/2; 
+float ppy=height/2; 
+float xc=x-ppx; 
+float yc=y-ppy; 
+float rr=(xc*xc)+(yc*yc)/(alpha*alpha);
+float newr=1+k*rr; 
+xc*newr+ppx; 
+
+r_fb_cm = sqrt((w_fb_cm * w_fb_cm) + (h_fb_cm * h_fb_cm)) / 2.0;
+p_cm = [
+ (((x/width) - 1.0/2.0) * w_fb_cm) - x_lco_cm,
+ (((y/height) - 1.0/2.0) * h_fb_cm) - y_lco_cm ];
+p_cm = p_cm / r_fb_cm;
+
+// ld = distortion
+// sq = squeeze
+// cx = curvature x
+// cy = curvature y
+
+cxx = ld / sq;
+cxy = (ld + cx) / sq;
+cyx = ld + cy;
+cyy = ld;
+
+p0_2 = p[0] * p[0];
+p1_2 = p[1] * p[1];
+
+q[0] = p[0] * (1 + (cxx * p0_2) + (cxy * p1_2));
+q[1] = p[1] * (1 + (cyx * p0_2) + (cyy * p1_2));
+
+k = distortion/(focal*focal)
+q[0] = p[0] * (1 + k*(p0_2 + p1_2));
+q[1] = p[1] * (1 + k*(p0_2 + p1_2));
+
+distortion = k*sqrt(focal)
+k = distortion/(focal*focal)
+ld = k
+
+# fl = focal length (mm) times image width (pixels)/film back width (mm). 
+
+// THIS WORKS!!! "ld" is the value that 3DE has as the "distortion" parameter in the classic distortion model.
+fl = 1595.43
+dst = -0.0917991
+aspectRatio = 1.5
+focal = (math.sqrt(fl)*aspectRatio)
+fbh = 27.0
+fbw = 32.0
+fl2 = focal*focal
+r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+k = (dst/fl2)*r_fb
+ld = k*2
+
+// THIS ALSO WORKS!!! WHY???
+fl = 533.333
+dst = 1.0
+fbh = 27.0
+fbw = 32.0
+aspectRatio = 1.5
+focal = (fl/(1280.0))*(fbw*aspectRatio)
+fl2 = (focal*1280.0)/(fbw*aspectRatio)
+r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+aspectRatio = aspectRatio*(fbw/fbh)
+k = (dst/fl2)*r_fb*aspectRatio
+ld = k
+
+// And this works too.
+fl = 533.333
+dst = 1.0
+aspectRatio = 1.5
+fbh = 27.0
+fbw = 32.0
+fbw_m = fbw * aspectRatio
+focal = (fl/(1280.0))*(fbw_m)
+fl2 = (focal*1280.0)/(fbw_m)
+r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+aspectRatio = fbw_m/fbh
+k = (dst/fl2)*r_fb*aspectRatio
+ld = k
+
+
+
+[davidc@Zaphod ~]$ python
+Python 2.6.6 (r266:84292, Sep 11 2012, 08:34:23) 
+[GCC 4.4.6 20120305 (Red Hat 4.4.6-4)] on linux2 
+Type "help", "copyright", "credits" or "license" for more information.
+>>> 35.0*35.0
+1225.0       
+>>> 1/1225.0
+0.00081632653061224493
+>>> 1225.0/1       
+1225.0             
+>>> 1225.0/35
+35.0         
+>>> 1225.0/35.0
+35.0           
+>>> 35/1225.0
+0.028571428571428571
+>>> 1225.0/35.0     
+35.0                
+>>> fl = 1585.42
+>>> dst = -1.0
+>>> k = dst/fl
+>>> k         
+-0.00063074768830972234
+>>> import math
+>>> math.sqrt(fl)
+39.817332909174119
+>>> math.sqrt(fl/2)
+28.155106108839298                                                                               
+>>> math.sqrt(fl*fl)                                                                           
+1585.4200000000001                                                                             
+>>> math.sqrt(fl/2)                                                                           
+28.155106108839298                                                                            
+>>> math.sqrt(fl)                                                                          
+39.817332909174119                                                                         
+>>> math.sqrt(1225.0)                                                                   
+35.0                                                                                    
+>>> math.sqrt(fl)                                                                   
+39.817332909174119                                                                  
+>>> k = distortion/fl
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+NameError: name 'distortion' is not defined
+>>> k = dst/fl                    
+>>> k                             
+-0.00063074768830972234           
+>>> k*(math.sqrt(fl))
+-0.025114690687120206
+>>> k*math.sqrt(fl)
+-0.025114690687120206
+>>> k*(1.0/math.sqrt(fl))
+-1.5841033093514782e-05                                                                             
+>>> k*fl)
+  File "<stdin>", line 1
+    k*fl)               
+        ^               
+SyntaxError: invalid syntax
+>>> k*fl
+-1.0    
+>>> p0 = 0.2
+>>> p1 = 0.3
+>>> p0_2 = p0*p0
+>>> p1_2 = p1*p1
+>>> p0_2
+0.040000000000000008
+>>> p1_2           
+0.089999999999999997
+>>> 1+(0.1*p0_2)+(0.1*p1_2)
+1.0129999999999999         
+>>> 1.0+(0.1*p0_2)+(0.1*p1_2)
+1.0129999999999999           
+>>> 1.0+0.1*(p0_2+p1_2)
+1.0129999999999999     
+>>> dst = -0.0917991   
+>>> k = dst/(fl)
+>>> fl          
+1585.4200000000001
+>>> k = dst/fl
+>>> k         
+-5.790207011391303e-05
+>>>                   
+>>> fkw = 32.0
+>>> fkh = 27.0
+>>> fbw = 32.0
+>>> fbh = 27.0
+>>> math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+396.5                               
+>>> 0.5-1.0/2.0
+0.0            
+>>> 0.2-1.0/2.0
+-0.29999999999999999
+>>> (0.2-1.0/2.0)*fbw
+-9.5999999999999996  
+>>> fbw = 3.20
+>>> fbh = 2.70
+>>> math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+6.8450000000000006                  
+>>> r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+>>> (0.2-1.0/2.0)*fbw
+-0.95999999999999996 
+>>> (0.0-1.0/2.0)*fbw
+-1.6000000000000001  
+>>> (0.2-1.0/2.0)*fbw
+-0.95999999999999996 
+>>> ((0.2-1.0/2.0)*fbw)/r_fb
+-0.14024835646457265        
+>>> ((0.0-1.0/2.0)*fbw)/r_fb
+-0.23374726077428779        
+>>> ((0.0-1.0/2.0)*fbw)
+-1.6000000000000001    
+>>> ((0.0-1.0/2.0))
+-0.5               
+>>> ((0.5-1.0/2.0))
+0.0                
+>>> ((0.5-1.0/2.0)*fbw)/r_fb
+0.0                         
+>>> ((0.5.1-1.0/2.0)*fbw)/r_fb
+  File "<stdin>", line 1      
+    ((0.5.1-1.0/2.0)*fbw)/r_fb
+          ^                   
+SyntaxError: invalid syntax   
+>>> ((0.51-1.0/2.0)*fbw)/r_fb
+0.0046749452154857601        
+>>> ((1.0-1.0/2.0)*fbw)/r_fb
+0.23374726077428779         
+>>> ((0.9-1.0/2.0)*fbw)/r_fb
+0.18699780861943027         
+>>> ((1.1-1.0/2.0)*fbw)/r_fb
+0.28049671292914541         
+>>> 0.23374726077428779-0.18699780861943027
+0.046749452154857513                       
+>>> 0.23374726077428779+0.046749452154857513
+0.2804967129291453                          
+>>> k = (dst/fl)*r_fb
+>>> k                
+-0.00039633966992973473
+>>> dst                
+-0.091799099999999995  
+>>> fl
+1585.4200000000001
+>>> fbh = 27.0
+>>> fbw = 32.0
+>>> r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+>>> rfb                                    
+Traceback (most recent call last):         
+  File "<stdin>", line 1, in <module>      
+NameError: name 'rfb' is not defined       
+>>> r_fb                                   
+396.5                                      
+>>> k = (dst/fl)*r_fb
+>>> k                
+-0.022958170800166516
+>>> fbw/fbh
+1.1851851851851851
+>>> (fbw/fbh)*1.5 
+1.7777777777777777
+>>> fbh = (27.0*)
+  File "<stdin>", line 1
+    fbh = (27.0*)       
+                ^       
+SyntaxError: invalid syntax
+>>> 27.0*(1.0/1.5)
+18.0              
+>>> fbh = (27.0*(1.0/1.5))
+>>> r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+>>> k = (dst/fl)*r_fb
+>>> k                
+-0.011233001602099129
+>>> fbh = 27.0
+>>> r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+>>> k = (dst/fl)*r_fb
+>>> k                
+-0.022958170800166516
+>>> k = (1.0/fl)*r_fb
+>>> k                
+0.2500914584148049   
+>>> k = (5.0/fl)*r_fb
+>>> k = (0.5/fl)*r_fb
+>>> k                
+0.12504572920740245  
+>>> k = (dst/fl)*r_fb
+>>> k                
+-0.022958170800166516
+>>> r_fb             
+396.5                
+>>> fbh = 2.70
+>>> fbw = 3.20
+>>> r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+>>> r_fb
+6.8450000000000006
+>>> fl
+1585.4200000000001
+>>> math.sqrt(fl)
+39.817332909174119
+>>> fl = math.sqrt(fl)/10
+>>> fl
+3.9817332909174121
+>>> fl = 1595.43
+>>> math.sqrt(fl)
+39.942834150821099
+>>> fl/1.4
+1139.5928571428572
+>>> fl/1.5
+1063.6200000000001
+>>> math.sqrt(fl/1.5)
+32.613187516708635
+>>> math.sqrt(fl*1.5)
+48.919781275062952
+>>> math.sqrt(fl*1.7777)
+53.25594718902294
+>>> math.sqrt(fl)*1.7777
+71.006376269914668
+>>> math.sqrt(fl)*1.5
+59.914251226231649
+>>> fl = 1585.43
+>>> math.sqrt(fl)*1.5
+59.726187723644301
+>>> fl = 1595.43
+>>> math.sqrt(fl)*1.5
+59.914251226231649
+>>> (math.sqrt(fl)*1.5)
+59.914251226231649
+>>> 59.914251226231649*59.914251226231649
+3589.7175000000007
+>>> fl
+1595.4300000000001
+>>> fl*2
+3190.8600000000001
+>>> fl*2.5
+3988.5750000000003
+>>> fl*2.333
+3722.1381900000006
+>>> fl
+1595.4300000000001
+>>> fl2 = 59.914251226231649*59.914251226231649
+>>> r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+>>> fbh = 27.0
+>>> fbw = 32.0
+>>> r_fb = math.sqrt(fbw*fbw)+(fbh*fbh)/2.0
+>>> k = (dst/fl)*r_fb
+>>> k
+-0.022814127319907482
+>>> k = (dst/fl2)*r_fb
+>>> k
+-0.010139612142181103
+>>> k*2
+-0.020279224284362206
+>>>
