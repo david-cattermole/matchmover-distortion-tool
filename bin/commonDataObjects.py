@@ -9,14 +9,34 @@ and converted when being read."""
 
 import sys
 
+
+projectName = 'MatchMover Distortion Tool'
+projectVersion = 'v0.2'
+projectAuthor = 'David Cattermole'
+projectEmail = 'cattermole91@gmail.com'
+projectTitle = projectName+' - '+projectVersion
+projectSubtitle = 'Written by '+projectAuthor+' ('+projectEmail+')'
+
+
 def floatIsEqual(x, y):
     # A small number, but still quite large, this sure ensure that "static"
     # values are treated as such.
-    eps = sys.float_info.epsilon*100000.0
+
+    # float equality
     if x == y:
         return True
+
+    # float equality, with an epsilon
+    eps = sys.float_info.epsilon*100.0
     if x < (y+eps) and x > (y-eps):
         return True
+
+    # string equality, with nine decimal places.
+    xStr = '%.9f' % float(x)
+    yStr = '%.9f' % float(y)
+    if xStr == yStr:
+        return True
+
     return False
 
 
@@ -38,28 +58,80 @@ class Units(object):
 units = Units()
 
 
+def getClosestFrame(frame, value):
+    """Get the closest frame in the dictionary value.
+
+    frame - An int for the frame to look up.
+    value - A dict with keys as the frames to look up.
+
+    Returns the closest frame in the dict value."""
+    # TODO: This function is quite slow, it should be improved.
+    keys = value.keys()
+    intKeys = list()
+    for key in keys:
+        intKeys.append(int(key))
+    keys = sorted(intKeys)
+    diff = int()
+    closestFrame = None
+    for key in keys:
+        if closestFrame == None:
+            closestFrame = key
+            diff = frame-closestFrame
+        if (key <= frame) and (key > closestFrame):
+            closestFrame = key
+        # if (key >= frame) and (key < closestFrame):
+        #     closestFrame = key
+        diff = closestFrame-frame
+    keys.reverse()
+    closestFrameRev = None
+    for key in keys:
+        if closestFrameRev == None:
+            closestFrameRev = key
+            diff = frame-closestFrameRev
+        # if (key <= frame) and (key > closestFrameRev):
+        #     closestFrameRev = key
+        if (key >= frame) and (key < closestFrameRev):
+            closestFrameRev = key
+        diff = closestFrameRev-frame    
+    diffRef = abs(closestFrameRev-frame)
+    diff = abs(closestFrame-frame)
+    if diffRef < diff:
+        closestFrame = closestFrameRev
+    return closestFrame
+
+
 class KeyframeData(object):
     """Keyframe data, used to store animated (or static) data."""
-    def __init__(self, static=False):
+    def __init__(self, static=False, initialValue=None):
         self.static = static
         self.startFrame = 0
         self.endFrame = 0
         self.length = 0
         self.value = None
+        if initialValue != None:
+            self.setValue(initialValue, 0)
 
     def getValue(self, frame):
         "Get the key value at frame. frame is an integer."
         # TODO: Should we get the closest frame, 
-        #  if the frame doest not exist?
+        #  if the frame does not not exist?
         value = None
-        lookupFrame = frame - self.startFrame
+        # lookupFrame = frame - self.startFrame
         if self.static == True:
             value = self.value
         elif self.static == False:
+            assert isinstance(self.value, dict)
             if isinstance(self.value, dict):
                 key = str(frame)
                 if self.value.has_key(key):
                     value = self.value[key]
+                else:
+                    # there is no key on the frame, find the closest frame.
+                    frame = getClosestFrame(frame, self.value)
+                    key = str(frame)
+                    if self.value.has_key(key):
+                        value = self.value[key]
+
         return value
 
     def getKeyValues(self):
@@ -78,22 +150,26 @@ class KeyframeData(object):
                             self.getValue(int(key))]
                 keyValues.append(keyValue)
         else:
-            keyValue = [0, self.getValue(0)]
+            assert isinstance(self.startFrame, int)
+            keyValue = [self.startFrame, self.getValue(0)]
             keyValues.append(keyValue)
         return keyValues
 
     def getTimeValues(self):
+        """Get all times, should be first half of getKeyValues."""
         timeValues = list()
         keyValues = self.getKeyValues()
         for kv in keyValues:
             timeValues.append(kv[0])
         return timeValues
 
-    def getStart(self):
-        return self.startFrame
-
-    def getEnd(self):
-        return self.endFrame
+    def getValues(self):
+        """Get all values, should be second half of getKeyValues."""
+        values = list()
+        keyValues = self.getKeyValues()
+        for kv in keyValues:
+            values.append(kv[1])
+        return values
 
     def setValue(self, x, f):
         """Set the value x, at frame f."""
@@ -103,38 +179,29 @@ class KeyframeData(object):
             if self.value == None:
                 self.value = dict()
 
+            if self.value.has_key(str(f)) and \
+               self.value[str(f)] == x:
+                return True
+
             # Set the value.
-            succeed = False
-            try:
-                self.value[str(f)] = x
-                succeed = True
-            except ValueError:
-                pass
+            self.value[str(f)] = x
 
             # set start and end frame and length
-            if succeed:
+            if self.value[str(f)] == x:
                 self.length = self.length + 1
                 if self.startFrame > f:
                     self.startFrame = f
                 if self.endFrame < f:
                     self.endFrame = f
         else:
-
             # Set the value, overwrites values without checking.
-            succeed = False
-            try:
-                self.value = x
-                succeed = True
-            except ValueError:
-                pass
+            self.value = x
 
             # set start and end frame and length
-            if succeed:
-                self.length = self.length + 1
-                if self.startFrame < f:
-                    self.startFrame = f
-                if self.endFrame > f:
-                    self.endFrame = f
+            if self.value == x:
+                self.length = 1
+                self.startFrame = 0
+                self.endFrame = 1
 
         return True
 
@@ -143,6 +210,7 @@ class KeyframeData(object):
         static if all values are the same."""
 
         if self.static == False:
+            assert isinstance(self.value, dict)
             initial = None
             total = float() # assume it's a float?
             totalNum = int()
@@ -157,7 +225,11 @@ class KeyframeData(object):
                 self.static = True
                 self.length = 1
                 self.startFrame = 0
-                self.endFrame = 1
+                self.endFrame = 0
+        else:
+            self.length = 1
+            self.startFrame = 0
+            self.endFrame = 0
         return True
 
 
@@ -177,7 +249,7 @@ class CameraData(object):
         self.imageAspectRatio = None
         self.pixelAspectRatio = None
         self.distortion = None
-        self.sequences = None
+        self.sequences = list()
 
 
 class MMCameraData(CameraData):
@@ -195,6 +267,7 @@ class TDECameraData(CameraData):
         CameraData.__init__(self)
         self._software = softwareType.tde
         self._units = units.cm
+        self.offset = None
 
 
 class SequenceData(object):
@@ -229,6 +302,7 @@ class SceneData(object):
     def __init__(self):
         self.name = None
         self.index = None
+        self.path = None
         self._software = None
         self._units = None
         self.frameRange = None

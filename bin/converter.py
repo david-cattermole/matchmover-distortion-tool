@@ -14,53 +14,68 @@ import mmFileReader
 def mmToTdeConvertDistortion(dst, fl, alpha,
                              fbw, fbh,
                              width, height):
-    fbw = fbw * alpha
+    """Converts Matchmover lens distortion into 3DE lens distortion.
 
+    dst - distortion value.
+    fl - The focal, (focalLength*width)/filmbackWidth.
+    alpha - The pixel aspect ratio.
+    fbw, fbh - Filmback Width/Height.
+    width, height - Image Width/Height.
+    """
+    fbw = fbw * alpha
     hwidth = width/2.0
     hheight = height/2.0
-    
-    focal = (fl/width)*(fbw)
-    fb = (focal*width)/fl
-    
-    ppx=width/2; 
-    ppy=height/2; 
     rr = (hwidth*hwidth)+(hheight*hheight)/(alpha*alpha)
-    rr = rr/10.0
 
     # calculate the distance between the undistorted and distorted coordinates
     # (in Shake coords), then, get the difference between them, that is the
     # matchmover distortion value!
     k = dst/(fl*fl)
-    
+
+    # calculate new distorted point
     newr = 1.0+k*rr
     newptx = hwidth*newr
     newpty = hheight*newr
     diffx = (hwidth-newptx)
     diffy = (hheight-newpty)
 
-    # WARNING: Below is a value of "30.5", this is a guessed value, I do not know why it needs to be that value, I'm sure there is a reason, but it is approximate.
+    # get the top-right most point, and the distorted point too,
+    # and get the ratio.
     ld1 = (math.sqrt((hwidth*hwidth)+(hheight*hheight))/2)
     ld2 = (math.sqrt((newptx*newptx)+(newpty*newpty))/2)
-    ld = ((ld2-ld1)/width)*30.5
-        
-    # print 'distortion value: %s' % repr(ld)
+    ld = (ld2/ld1)-1.0
+
     return ld
 
 
 def convertValue(inValue, inUnit, outUnit):
+    assert (isinstance(inValue, int) or 
+            isinstance(inValue, float) or 
+            isinstance(inValue, cdo.KeyframeData))
+    assert isinstance(inUnit, str)
+    assert isinstance(outUnit, str)
     outValue = None
+
+    # if we are not needing to convert, simply return.
+    if inUnit == outUnit:
+        outValue = inValue
+        return outValue
 
     # get the conversion factor.
     conversionFactor = 1.0
-    if (inUnit == cdo.units.mm) and \
-       (outUnit == cdo.units.cm):
+    if ((inUnit == cdo.units.mm) and 
+        (outUnit == cdo.units.cm)):
         conversionFactor = 0.1
+    elif ((inUnit == cdo.units.cm) and 
+        (outUnit == cdo.units.mm)):
+        conversionFactor = 10.0
 
     # convert the value, taking "KeyframeData" into account.
     if isinstance(inValue, cdo.KeyframeData):
         outValue = cdo.KeyframeData()
         if inValue.static:
             value = inValue.getValue(0)
+            assert inValue.length == 1
             outValue.setValue(value*conversionFactor, 0)
         else:
             inKeyValues = inValue.getKeyValues()
@@ -70,6 +85,8 @@ def convertValue(inValue, inUnit, outUnit):
                 outValue.setValue(value*conversionFactor, key)
     else:
         outValue = inValue * conversionFactor
+
+    assert outValue != None
     return outValue
 
 
@@ -78,27 +95,14 @@ def convertDistortion(cam, outType):
     outValue = None
     inType = cam._software
 
-    if not isinstance(inValue, cdo.KeyframeData):
-        msg = ('Warning: Distortion is not a KeyframeData object, '
-               'it therefore will not be converted, %s.')
-        print(msg % repr(inValue))
-    else:
-        if inType == outType:
-            outValue = inValue
-        elif inType == cdo.softwareType.mm and \
-             outType == cdo.softwareType.tde:
+    if inType == cdo.softwareType.mm and \
+         outType == cdo.softwareType.tde:
 
-            msg = ('Warning: Cannot convert distortion, '
-                   '%s is not KeyframeData, %s.')
-            if not isinstance(cam.focal, cdo.KeyframeData):
-                print(msg % ('focal', repr(cam.focal)))
-                return outValue
-            if not isinstance(cam.distortion, cdo.KeyframeData):
-                print(msg % ('distortion', repr(cam.distortion)))
-                return outValue
-
-            outValue = cdo.KeyframeData()
+        outValue = cdo.KeyframeData()
+        frameRange = (0, 0, 24)
+        if (cam.sequences != None) and (len(cam.sequences) > 0):
             frameRange = cam.sequences[0].frameRange
+        if (frameRange[1]-frameRange[0]) > 0:
             for i in range(frameRange[0], frameRange[1]):
                 dst = cam.distortion.getValue(i)
                 fl = cam.focal.getValue(i)
@@ -108,6 +112,9 @@ def convertDistortion(cam, outType):
                                              cam.filmbackHeight,
                                              cam.width, cam.height)
                 outValue.setValue(k, i)
+        else:
+            outValue.setValue(0.0, 0)
+        outValue.simplifyData()
             
     return outValue
 
@@ -119,7 +126,7 @@ def convertCamera(cam, toSoftware):
         msg = ('Warning: Camera did not convert to %s '
                'because the camera given has the type %s, '
                'cannot convert to same format.')
-        print(msg % (inType, outType))
+        print(msg % (repr(inType), repr(outType)))
         return False
 
     # Convert from Matchmover to 3DE4.
@@ -129,52 +136,29 @@ def convertCamera(cam, toSoftware):
 
         outCam.name = cam.name
         outCam.index = cam.index
-        outCam.focalLength = convertValue(cam.focalLength, cam._units, outCam._units)
-        outCam.filmbackWidth = convertValue(cam.filmbackWidth, cam._units, outCam._units)
-        outCam.filmbackHeight = convertValue(cam.filmbackHeight, cam._units, outCam._units)
-        outCam.filmAspectRatio = cam.filmAspectRatio
+
+        # Image resolution
         outCam.width = cam.width
         outCam.height = cam.height
         outCam.imageAspectRatio = cam.imageAspectRatio
         outCam.pixelAspectRatio = cam.pixelAspectRatio
+
+        # Filmback
+        outCam.filmbackWidth = convertValue(cam.filmbackWidth, cam._units, outCam._units)
+        outCam.filmbackHeight = convertValue(cam.filmbackHeight, cam._units, outCam._units)
+        outCam.filmAspectRatio = cam.filmAspectRatio
+        aspectRatio = float(outCam.filmbackWidth/outCam.filmbackHeight)
+        assert cdo.floatIsEqual(aspectRatio, outCam.filmAspectRatio)
+
+        # Focal Length
+        outCam.focalLength = convertValue(cam.focalLength, cam._units, outCam._units)
+
+        # convert distortion
+        assert isinstance(cam.distortion, cdo.KeyframeData)
+        assert cam.distortion.getValue(0) != None
         outCam.distortion = convertDistortion(cam, outType)
 
+        # copy across the sequences
+        outCam.sequences = cam.sequences
+
     return outCam
-
-    
-# Test
-if __name__ == '__main__':
-    filePaths = ['/home/davidc/Dev/mmDistortionTool/exampleFiles/camera_xml.rzml',
-                 '/home/davidc/Dev/mmDistortionTool/exampleFiles/uhaul_m14b.rzml',
-                 '/home/davidc/Dev/mmDistortionTool/exampleFiles/uhaul_m14.rzml']
-    for filePath in filePaths:
-        print 'filePath:', repr(filePath)
-        proj = mmFileReader.readRZML(filePath)
-        for cam in proj.cameras:
-            print 'cam.name:', cam.name
-            print 'cam.filmbackWidth:', cam.filmbackWidth
-            print 'cam.filmbackHeight:', cam.filmbackHeight
-            print 'cam.filmAspectRatio:', cam.filmAspectRatio
-            print 'cam.width:', cam.width
-            print 'cam.height:', cam.height
-            print 'cam.imageAspectRatio:', cam.imageAspectRatio
-            print 'cam.pixelAspectRatio:', cam.pixelAspectRatio
-            print 'cam.focal:', cam.focal.getKeyValues()
-            print 'cam.distortion:', cam.distortion.getKeyValues()
-            print 'cam.focalLength:', cam.focalLength.getKeyValues()
-            print 'cam.sequences:', cam.sequences
-
-            tdeCam = convertCamera(cam, cdo.softwareType.tde)
-            print 'tdeCam.name:', tdeCam.name
-            print 'tdeCam.filmbackWidth:', tdeCam.filmbackWidth
-            print 'tdeCam.filmbackHeight:', tdeCam.filmbackHeight
-            print 'tdeCam.filmAspectRatio:', tdeCam.filmAspectRatio
-            print 'tdeCam.width:', tdeCam.width
-            print 'tdeCam.height:', tdeCam.height
-            print 'tdeCam.imageAspectRatio:', tdeCam.imageAspectRatio
-            print 'tdeCam.pixelAspectRatio:', cam.pixelAspectRatio
-            print 'tdeCam.distortion:', tdeCam.distortion.getKeyValues()
-            print 'tdeCam.focalLength:', tdeCam.focalLength.getKeyValues()
-            print 'tdeCam.sequences:', tdeCam.sequences
-            print '------end cam------'
-        print '------end file------'

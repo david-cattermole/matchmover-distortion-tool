@@ -5,7 +5,7 @@ Copyright David Cattermole, 2013
 
 Author: David Cattermole
 Email: cattermole91@gmail.com
-Version: 0.1
+Version: 0.2
 
 How to use: ....
 """
@@ -28,13 +28,13 @@ import commonDataObjects as cdo
 import converter
 import mmFileReader
 import tdeWriteLensFile
-
-guiTitle = 'Matchmover Distortion Converter - v0.1'
+import tdeWriteRawText
+import tdeWriteWetaNukeDistortionNode
 
 
 def createOutFileName(inFile, cameraName,
                       suffix, outExt):
-    # assert isinstance(inFile, str)
+    assert isinstance(inFile, str) or isinstance(inFile, unicode)
     assert isinstance(cameraName, str)
     assert isinstance(suffix, str)
     assert isinstance(outExt, str)
@@ -65,12 +65,14 @@ def createOutFileName(inFile, cameraName,
 class MMDistortionConverter(object):
     """Class that asks for a file path using a GUI."""
 
-    def __init__ (self):
+    def __init__ (self, path=None):
         self.os = str(platform.system()).lower()
 
         # get the file path.
-        filePath = self.getFilePath()
-        # print("filePath: %s" % repr(filePath))
+        if path != None:
+            filePath = str(path)
+        else:
+            filePath = self.getFilePath()
         if filePath == None:
             msg = 'User cancelled the file dialog, file path: %s.'
             print msg % repr(filePath)
@@ -81,18 +83,23 @@ class MMDistortionConverter(object):
             return
 
         # read the file, get camera data.
-        print("Reading Matchmover File: '%s'" % filePath)
+        fileName = p.split(filePath)[1]
+        print("Reading Matchmover File: '%s'" % fileName)
         projData = mmFileReader.readRZML(filePath)
 
         cams = projData.cameras
         for cam in projData.cameras:
             print("Converting Camera: '%s'" % cam.name)
             tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)
+
+            outFilePath = createOutFileName(filePath, tdeCam.name, '3deRawText', 'txt')
+            tdeWriteRawText.main(tdeCam, outFilePath)
             
             outFilePath = createOutFileName(filePath, tdeCam.name, '3deLens', 'txt')
-            # print("outFilePath: %s"%outFilePath)
             tdeWriteLensFile.main(tdeCam, outFilePath)
-            # tdeWriteNukeDistortionNode(tdeCam, outFilePath)
+            
+            outFilePath = createOutFileName(filePath, tdeCam.name, 'wetaDistortionNode', 'nk')
+            tdeWriteWetaNukeDistortionNode.main(tdeCam, outFilePath)
         
         print('Distortion Converter Finished!')
         return
@@ -102,7 +109,7 @@ class MMDistortionConverter(object):
         filePath = None
         result = tkFileDialog.askopenfilename(filetypes=[('RZML', '*.rzml')], # 
                                               multiple=False, 
-                                              title=guiTitle)
+                                              title=cdo.projectTitle)
         if result == '':
             filePath = None
         else:
@@ -111,4 +118,3 @@ class MMDistortionConverter(object):
 
 if __name__ == '__main__':
     gui = MMDistortionConverter()
-

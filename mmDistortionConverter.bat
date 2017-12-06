@@ -8,20 +8,6 @@ setlocal
 
 set py_exists=0
 
-:: python 2.6 test
-if %py_exists%==0 (
-   if EXIST "C:\Python26\python.exe" (
-      set py_exists=1
-      set PY="C:\Python26\python.exe"
-      echo Found Python 2.6, great!!!
-   ) else (
-      if %py_exists%==0 (
-      	 set py_exists=0
-      )
-      echo Python 2.6 doesn't exist on this computer
-   )
-)
-
 :: python 2.7 test
 if %py_exists%==0 (
    if EXIST "C:\Python27\python.exe" (
@@ -33,6 +19,20 @@ if %py_exists%==0 (
       	 set py_exists=0
       )
       echo Python 2.7 doesn't exist on this computer
+   )
+)
+
+:: python 2.6 test
+if %py_exists%==0 (
+   if EXIST "C:\Python26\python.exe" (
+      set py_exists=1
+      set PY="C:\Python26\python.exe"
+      echo Found Python 2.6, great!!!
+   ) else (
+      if %py_exists%==0 (
+      	 set py_exists=0
+      )
+      echo Python 2.6 doesn't exist on this computer
    )
 )
 
@@ -49,21 +49,6 @@ if %py_exists%==0 (
       echo Python 2.5 doesn't exist on this computer
    )
 )
-
-:: python 2.4 test
-if %py_exists%==0 (
-   if EXIST "C:\Python24\python.exe" (
-      set py_exists=1
-      set PY="C:\Python24\python.exe"
-      echo Found Python 2.4, great!!!
-   ) else (
-      if %py_exists%==0 (
-      	 set py_exists=0
-      )
-      echo Python 2.4 doesn't exist on this computer
-   )
-)
-
 
 :: run the program
 if %py_exists%==1 (
