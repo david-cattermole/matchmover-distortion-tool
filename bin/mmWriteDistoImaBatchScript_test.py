@@ -11,15 +11,12 @@ import math
 import commonDataObjects as cdo
 import mmFileReader
 import converter
-import tdeWriteLensFile
-import tdeWriteRawText
-import tdeWriteWetaNukeDistortionNode
+import mmWriteDistoImaBatchScript
 import mmDistortionConverter as mdc
 
 def main(filePath):
     projData = mmFileReader.readRZML(filePath)
     cams = projData.cameras
     for cam in projData.cameras:
-        tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)
-        tdeWriteRawText.main(tdeCam, filePath)
+        mmWriteDistoImaBatchScript.main(cam, filePath)
     return True

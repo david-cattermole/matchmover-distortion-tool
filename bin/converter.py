@@ -150,6 +150,10 @@ def convertCamera(cam, toSoftware):
         aspectRatio = float(outCam.filmbackWidth/outCam.filmbackHeight)
         assert cdo.floatIsEqual(aspectRatio, outCam.filmAspectRatio)
 
+        # Lens Centre
+        outCam.lensCentreX = (cam.lensCentreX-0.5)*outCam.filmbackWidth
+        outCam.lensCentreY = (cam.lensCentreY-0.5)*outCam.filmbackHeight
+
         # Focal Length
         outCam.focalLength = convertValue(cam.focalLength, cam._units, outCam._units)
 

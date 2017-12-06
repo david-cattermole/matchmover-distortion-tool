@@ -21,8 +21,5 @@ def main(filePath):
     cams = projData.cameras
     for cam in projData.cameras:
         tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)
-
-        outFilePath = mdc.createOutFileName(filePath, tdeCam.name,
-                                            '3deLens', 'txt')
-        tdeWriteLensFile.main(tdeCam, outFilePath)
+        tdeWriteLensFile.main(tdeCam, filePath)
     return True

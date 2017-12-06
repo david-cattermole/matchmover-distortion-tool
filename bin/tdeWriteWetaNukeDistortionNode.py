@@ -35,10 +35,12 @@ def main(cam, filePath, offset=None):
     lcy = 0.0
     pxa = cam.pixelAspectRatio
 
-    fileName = p.split(filePath)[1]
+    outFilePath = cdo.createOutFileName(filePath, cam.name,
+                                        cdo.exportDesc.nukeWetaNode, 'nk')
+    outFileName = p.split(outFilePath)[1]
     msg = "Writing 3DE Weta Nuke Distortion Node file to '%s'"
-    print(msg % fileName)
-    f = open(filePath,"w")
+    print(msg % outFileName)
+    f = open(outFilePath,"w")
     if not f.closed:
         f.write('# Exported by %s %s\n'%(cdo.projectName, cdo.projectVersion))
         f.write('%s {\n' % lensModel)
@@ -86,7 +88,7 @@ def main(cam, filePath, offset=None):
                     f.write(' %.7f '%d)	
                 f.write('}}\n')
 
-        elif cam.distortion.static == True: # case C
+        elif cam.distortion.static == True:
 
             # write distortion parameter
             distValue = cam.distortion.getValue(0)

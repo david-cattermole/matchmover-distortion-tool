@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
-<RZML v="1.3.2" app="MatchMover 2013 4.1.0.0" path="/Z:/projects/matchmoverTest/level17_sc001-011_v007.rzml">
+<RZML v="1.3.2" app="MatchMover 2013 4.1.0.0" path="/data/projects/matchmoverTest/level17_sc001-011_v007.rzml">
 	<EXPORT ulin="cm" start="0"/>
 	<TRNG t="536" d="415" f="24"/>
 	<L i="1" n="Track 01" u="a">
@@ -1703,7 +1703,7 @@
 			<T x="0.7141765644" y="-0.5118882363" z="5.71373807"/>
 			<R x="-175.9433849" y="-20.18196345" z="-1.07676075"/>
 		</CFRM>
-		<IPLN img="/Z:/projects/level17_ep001/sc001/sc001-011/scans/v001/001-011_@.png" b="1001" e="1951">
+		<IPLN img="/data/projects/level17_ep001/sc001/sc001-011/scans/v001/001-011_@.png" b="1001" e="1951">
 			<IFRM/>
 			<IFRM t="1"/>
 			<IFRM t="2"/>

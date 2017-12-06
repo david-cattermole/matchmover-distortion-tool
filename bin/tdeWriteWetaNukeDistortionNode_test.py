@@ -22,10 +22,7 @@ def main(filePath):
     cams = projData.cameras
     for cam in projData.cameras:
         tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)
-
-        outFilePath = mdc.createOutFileName(filePath, tdeCam.name,
-                                            'wetaDistortionNode', 'nk')
-        tdeWriteRawText.main(tdeCam, outFilePath)
+        tdeWriteWetaNukeDistortionNode.main(tdeCam, filePath)
     return True
 
 

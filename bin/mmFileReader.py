@@ -13,12 +13,14 @@ To calculate a focal length from a FOV like this
 import math
 import os
 import os.path as p
+import platform
 
 import commonDataObjects as cdo
 
 import xml.dom.minidom as xdm
 
 
+currentPlatform = str(platform.system()).lower()
 def getKey(attrs, key, dataType, default=None):
     """Get the key from the attrs, with the dataType wanted."""
     assert isinstance(attrs, dict)
@@ -38,6 +40,11 @@ def getKey(attrs, key, dataType, default=None):
             value = int(value)
         elif dataType == 'float':
             value = float(value)
+        if dataType == 'path':
+            value = str(value)
+            if currentPlatform == 'windows':
+                # remove first character on windows.
+                value = value[1:]
     return value
 
 
@@ -101,6 +108,9 @@ def getCameras(dom):
         cam.filmbackWidth = float(cam.filmbackHeight*cam.imageAspectRatio)
         cam.filmAspectRatio = float(cam.filmbackWidth/cam.filmbackHeight)
 
+        cam.lensCentreX = getKey(attrs, 'ppx', 'float', default=0.5)
+        cam.lensCentreY = getKey(attrs, 'ppy', 'float', default=0.5)
+
         cam.focalLength = cdo.KeyframeData(static=True)
         cam.focalLength.setValue(30.0, 0)
         assert cam.focalLength.length == 1
@@ -137,6 +147,7 @@ def getShots(dom, cams):
                     shotCam = cam
                     shot.cameraIndex = int(camIndex)
         shot.cameraName = str(cam.name)
+        assert shotCam != None
 
         # put shot data into shot object.
         shot.name = str(getKey(shotAttrs, 'n', 'str'))
@@ -158,7 +169,7 @@ def getShots(dom, cams):
         for childNode in node.childNodes:
             if childNode.nodeName == 'IPLN':
                 imgAttrs = getAttrs(childNode)
-                shot.imagePath = getKey(imgAttrs, 'img', 'str')
+                shot.imagePath = getKey(imgAttrs, 'img', 'path')
             elif childNode.nodeName == 'TRNG':
                 trngAttrs = getAttrs(childNode)
                 trim = getKey(trngAttrs, 't', 'int')

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
-<RZML v="1.3.2" app="MatchMover 2013 4.1.0.0" path="/Z:/projects/level17_ep001/sc001/sc001-carJumpShot/3d/camera/matchmover/sc001-carRunJump_v005.rzml">
+<RZML v="1.3.2" app="MatchMover 2013 4.1.0.0" path="/C:/Users/DavidC/Dev/mmDistortionTool/trunk/bin/testFiles/nodalSolve_noDistortion_timeRange_windowsPath2.rzml">
 	<EXPORT ulin="cm" start="0"/>
 	<TRNG t="0" d="151" f="25"/>
 	<L i="1" n="Track 01" u="a">
@@ -649,7 +649,7 @@
 			<T x="-0.2149226754" y="0.09368815717" z="-0.7657994042"/>
 			<R x="-179.8810575" y="-0.03549840017" z="-0.008095732914"/>
 		</CFRM>
-		<IPLN img="/Z:/projects/level17_ep001/sc001/sc001-carJumpShot/scans/v002/sc001-carJumpShot_v002.@.png" b="1500" e="1650">
+		<IPLN img="/C:/Users/DavidC/Dev/mmDistortionTool/trunk/bin/testFiles/imageSequence.@.png" b="1500" e="1650">
 			<IFRM/>
 			<IFRM t="1"/>
 			<IFRM t="2"/>
@@ -2490,7 +2490,7 @@
 			</IFRM>
 		</IPLN>
 	</SHOT>
-	<MTL i="1" n="Default Material">
+	<MTL i="1" n="Default Material (2)">
 		<C r="127" g="127" b="127"/>
 	</MTL>
 </RZML>

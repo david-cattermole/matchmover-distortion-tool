@@ -8,10 +8,13 @@ and converted when being read."""
 # see "COPYING.txt" for more details.
 
 import sys
-
+import os
+import os.path as p
+import glob
+import platform
 
 projectName = 'MatchMover Distortion Tool'
-projectVersion = 'v0.2.1'
+projectVersion = 'v0.3.0'
 projectAuthor = 'David Cattermole'
 projectEmail = 'cattermole91@gmail.com'
 projectTitle = projectName+' - '+projectVersion
@@ -50,12 +53,148 @@ softwareType = SoftwareType()
 
 
 class Units(object):
-    """ """
+    """All string equivalents of Units that can be used."""
     def __init__(self):
         self.mm = 'mm'
         self.cm = 'cm'
         self.m = 'm'
 units = Units()
+
+
+class ExportFileDescription(object):
+    def __init__(self):
+        self.tdeRawText = '3deRawText'
+        self.tdeLens = '3deLens'
+        self.nukeWetaNode = 'wetaDistortionNode'
+        self.mmDistortScript = 'mmDistortScript_!CPU!'
+        self.mmUndistortScript = 'mmUndistortScript_!CPU!'
+        self.tdeDistortScript = 'tdeDistortScript_!CPU!'
+        self.tdeUndistortScript = 'tdeUndistortScript_!CPU!'
+exportDesc = ExportFileDescription()
+
+
+def createOutFileName(inFile, cameraName,
+                      suffix, outExt):
+    assert isinstance(inFile, str) or isinstance(inFile, unicode)
+    assert isinstance(cameraName, str)
+    assert isinstance(suffix, str)
+    assert isinstance(outExt, str)
+
+    inFile = p.abspath(str(inFile))
+
+    illegalChars = [' ']
+    replaceChar = '_'
+    for char in illegalChars:
+        cameraName = cameraName.replace(char, replaceChar)
+
+    inSplit = p.split(inFile)
+    outDir = inSplit[0]
+    outFileName = inSplit[1]
+    
+    extSplit = p.splitext(outFileName)
+    outFileName = extSplit[0]
+    oldExt = extSplit[1]
+
+    if not outExt.startswith('.'):
+        outExt = '.'+outExt
+
+    outFileName = outFileName+'_'+cameraName+'_'+suffix+outExt
+    outFilePath = p.join(outDir, outFileName)
+    return outFilePath
+
+
+def getAllImageSequence(cameraImagePath):
+    """Try to get all image files from an image sequence path."""
+    images = list()
+
+    imagePath = p.abspath(str(cameraImagePath))
+    globPath = str()
+    if imagePath.find('#') != -1:
+        globPath = imagePath.replace('#', '[0-9]')
+    elif imagePath.find('@') != -1:
+        globPath = imagePath.replace('@', '[0-9][0-9][0-9][0-9]')
+
+    if globPath == str():
+        msg = "Warning: Could not parse image sequence path, '%s'."
+        print(msg % repr(cameraImagePath))
+        return images
+
+    images = glob.glob(globPath)
+    
+    if len(images) == 0:
+        msg = "Warning: Could not get image paths from sequence path, '%s'."
+        print(msg % repr(cameraImagePath))
+        return images
+
+    images.sort()
+    return images
+
+
+def splitImageSequencePath(cameraImagePath):
+    """Split an image sequence path where the frame number should have been."""
+    seqStart = None
+    seqEnd = None
+    imagePath = str(cameraImagePath)
+    if imagePath.find('#') != -1:
+        padSplit = imagePath.split('#')
+        seqStart = padSplit[0]
+        seqEnd = padSplit[-1]
+    elif imagePath.find('@') != -1:
+        padSplit = imagePath.split('@')
+        seqStart = padSplit[0]
+        seqEnd = padSplit[-1]
+    if seqStart == None or seqEnd == None:
+        msg = "Warning: Could not split the image sequence, '%s'"
+        print(msg % cameraImagePath)
+    # assert seqStart != None
+    # assert seqEnd != None
+    return (seqStart, seqEnd)
+
+
+def getImagePathFrameNumber(seqPath, imagePath):
+    """Given the sequence and image path, give the frame number of the image path."""
+    frameNum = None
+    seqStart, seqEnd = splitImageSequencePath(seqPath)
+    if seqStart != None and seqEnd != None:
+        startNum = len(seqStart)
+        endNum = startNum+len(seqEnd)
+        frameStr = imagePath[startNum:endNum]
+        try:
+            frameNum = int(frameStr)
+        except ValueError:
+            pass
+    return frameNum
+
+
+def getImageSequencePadding(cameraImagePath):
+    """Returns the padding of the image sequence path."""
+    pad = None
+    imagePath = str(cameraImagePath)
+    if imagePath.find('#') != -1:
+        pad = imagePath.count('#')
+    elif imagePath.find('@') != -1:
+        pad = int(imagePath.count('@')*4)
+    if pad == None:
+        msg = "Warning: Could not get the padding for the image sequence, '%s'"
+        print(msg % cameraImagePath)
+    assert isinstance(pad, int) or pad == None
+    return pad
+
+
+def convertUnixToWinePath(filePath):
+    """Converts a Unix-type file path to a
+    Windows Emulator (Wine) file path."""
+    if str(platform.system()).lower() == 'windows':
+        return filePath
+    pathSep = '\\'
+    winePathStarter = 'Z:\\'
+    winePath = str(filePath).replace(os.sep, pathSep)
+
+    # remove the first character if it is a '\'
+    if winePath.startswith(pathSep):
+        winePath = winePath[1:]
+    winePath = winePathStarter+winePath
+    return winePath
 
 
 def getClosestFrame(frame, value):
@@ -244,6 +383,8 @@ class CameraData(object):
         self.filmbackWidth = None
         self.filmbackHeight = None
         self.filmAspectRatio = None
+        self.lensCentreX = None
+        self.lensCentreY = None
         self.width = None
         self.height = None
         self.imageAspectRatio = None
@@ -292,6 +433,13 @@ class MMSequenceData(SequenceData):
     def __init__(self):
         SequenceData.__init__(self)
         self._software = softwareType.mm
+
+
+class TDESequenceData(SequenceData):
+    """Used to store data of a matchmover sequence."""
+    def __init__(self):
+        SequenceData.__init__(self)
+        self._software = softwareType.tde
         
 
 class SceneData(object):

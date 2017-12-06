@@ -37,10 +37,12 @@ def writeCurve(f, keyframes):
 
 
 def main(cam, filePath):
-    fileName = p.split(filePath)[1]
+    outFilePath = cdo.createOutFileName(filePath, cam.name,
+                                        cdo.exportDesc.tdeLens, 'txt')
+    outFileName = p.split(outFilePath)[1]
     msg = "Writing 3DE Lens file to '%s'."
-    print(msg % fileName)
-    f = open(filePath,"w")
+    print(msg % outFileName)
+    f = open(outFilePath,"w")
     if not f.closed:
         # write lens name
         f.write(cam.name+'_lens\n')
@@ -88,5 +90,5 @@ def main(cam, filePath):
 
         f.write("<end_of_file>\n")
         f.close()
-        assert p.isfile(filePath) == True
+        assert p.isfile(outFilePath) == True
     return True

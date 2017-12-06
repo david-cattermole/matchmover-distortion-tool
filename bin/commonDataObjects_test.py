@@ -112,5 +112,5 @@ def main(filePath):
     assert cdo.getClosestFrame(43, value) == 44
     assert cdo.getClosestFrame(30, value) == 44
     assert cdo.getClosestFrame(-1, value) == 10
-
+    
     return True

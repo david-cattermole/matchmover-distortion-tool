@@ -34,10 +34,13 @@ def writeCurve(f, keyframes):
 
 
 def main(cam, filePath):
-    fileName = p.split(filePath)[1]
+    outFilePath = cdo.createOutFileName(filePath, cam.name,
+                                        cdo.exportDesc.tdeRawText, 'txt')
+    
+    outFileName = p.split(outFilePath)[1]
     msg = "Writing 3DE Raw Text file to '%s'."
-    print(msg % fileName)
-    f = open(filePath,"w")
+    print(msg % outFileName)
+    f = open(outFilePath,"w")
     if not f.closed:
         # write camera name
         f.write('Camera Name: '+str(cam.name)+"\n")

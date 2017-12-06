@@ -1,0 +1,25 @@
+TODO:
+- Warp Batch Script exporter, test it on Windows too.
+- DistoIma Batch Script exporter, must be well tested.
+- Research the "Lens Centre" feature in 3DE and MatchMover, in terms of distortion and Maya export - does MatchMover adjust the filmback offset like 3DE?.
+  - Answer: MM will not modify the filmback offset, but will change the distortion centre, this has been changed in this tool.
+- Testing files should automatically run images through Warp4 and DistoIma, then check the two images against each other (using OpenImageIO, idiff or oiiotool) - this should be part of the unit test suite.
+- Create GUI for selecting which exports to do, and the options for the exporters.
+  - "Fake" Multi-threading should be an option (on by default?).
+  - When exporting files, there should be an option of where to export them to, (the same directory, custom directory).
+  - When (un)distorting images, the user should be able to choose the output image format (it should default to JPEG).
+
+Next Release:
+- Tested Weta Nuke Distortion Node Export.
+- Warp4 and DistoIma Batch Script Exporters.
+- Well tested, +95% coverage!
+
+
+Future Releases:
+- 2.5D Point Export from MatchMover
+- PFTrack distortion conversion.
+  - This does not seem possible.
+- Maya export from MM.
+  - Should use ZXY rotation order.
+  - Perhaps it should modify the filmback offset?
+

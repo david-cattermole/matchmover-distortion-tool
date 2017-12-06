@@ -1,0 +1,35 @@
+#! C:/Program Files/Nuke6.3v1/Nuke6.3.exe -nx
+version 6.3 v1
+Gizmo {
+ addUserKnob {20 User}
+ addUserKnob {4 direction M {undistort distort}}
+ addUserKnob {7 tde4_focal_length_cm}
+ addUserKnob {7 tde4_filmback_width_cm}
+ addUserKnob {7 tde4_filmback_height_cm}
+ addUserKnob {7 tde4_lens_center_offset_x_cm}
+ addUserKnob {7 tde4_lens_center_offset_y_cm}
+ addUserKnob {7 tde4_pixel_aspect}
+ addUserKnob {7 Distortion}
+ addUserKnob {7 Anamorphic_Squeeze}
+ addUserKnob {7 Curvature_X}
+ addUserKnob {7 Curvature_Y}
+ addUserKnob {7 Quartic_Distortion}
+}
+ Input {
+  inputs 0
+  name Input1
+  xpos -143
+  ypos -148
+ }
+ NoOp {
+  name NoOp1
+  selected true
+  xpos -143
+  ypos -76
+ }
+ Output {
+  name Output1
+  xpos -143
+  ypos -8
+ }
+end_group

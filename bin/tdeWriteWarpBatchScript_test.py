@@ -11,9 +11,7 @@ import math
 import commonDataObjects as cdo
 import mmFileReader
 import converter
-import tdeWriteLensFile
-import tdeWriteRawText
-import tdeWriteWetaNukeDistortionNode
+import tdeWriteWarpBatchScript
 import mmDistortionConverter as mdc
 
 def main(filePath):
@@ -21,5 +19,5 @@ def main(filePath):
     cams = projData.cameras
     for cam in projData.cameras:
         tdeCam = converter.convertCamera(cam, cdo.softwareType.tde)
-        tdeWriteRawText.main(tdeCam, filePath)
+        tdeWriteWarpBatchScript.main(tdeCam, filePath)
     return True
